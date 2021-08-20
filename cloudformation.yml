@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Resources:
+
+  ArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  LogGroup: 
+    Type: AWS::Logs::LogGroup
+    Properties: 
+      RetentionInDays: 3
+
+  ServiceRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "codebuild.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: CodeDeployPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+                Effect: Allow
+                Resource: !GetAtt LogGroup.Arn
+              - Action:
+                  - "s3:PutObject"
+                Effect: Allow
+                Resource: 
+                  - !Sub "arn:aws:s3:::${ArtifactsBucket}/*"
+
+  BatchBuildPolicy:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyName: BatchBuild
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+            - codebuild:StartBuild
+            - codebuild:StopBuild
+            - codebuild:RetryBuild
+            Effect: Allow
+            Resource: !GetAtt Project.Arn
+      Roles: 
+        - !Ref ServiceRole
+              
+  Project:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      ServiceRole: !Ref ServiceRole
+      Artifacts: 
+        Location: !Ref ArtifactsBucket
+        OverrideArtifactName: true
+        Packaging: ZIP
+        Type: S3
+      Source:
+        BuildSpec: buildspec.yml
+        Location: https://github.com/aws-samples/cross-platform-go-builds-with-aws-codebuild
+        Type: GITHUB
+      Environment:
+        ComputeType: BUILD_GENERAL1_LARGE
+        Image: aws/codebuild/standard:5.0
+        PrivilegedMode: false
+        Type: LINUX_CONTAINER
+      BuildBatchConfig:
+        ServiceRole: !Ref ServiceRole
+      LogsConfig:
+        CloudWatchLogs:
+          GroupName: !Ref LogGroup
+          Status: ENABLED
