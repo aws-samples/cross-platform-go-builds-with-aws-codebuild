@@ -10,6 +10,31 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'aws:kms'
+              KMSMasterKeyID: !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/s3"
+            BucketKeyEnabled: true
+
+  ArtifactsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ArtifactsBucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - s3:PutObject
+            Effect: Deny
+            Resource:
+              - !Sub "arn:aws:s3:::${ArtifactsBucket}/*"
+            Principal: "*"
+            # https://aws.amazon.com/blogs/security/how-to-restrict-amazon-s3-bucket-access-to-a-specific-iam-role/
+            Condition:
+              StringNotLike:
+                aws:userId: 
+                  - !Sub "${ServiceRole.RoleId}:*"
 
   LogGroup: 
     Type: AWS::Logs::LogGroup
@@ -70,12 +95,13 @@ Resources:
         OverrideArtifactName: true
         Packaging: ZIP
         Type: S3
+      EncryptionKey: alias/aws/s3
       Source:
         BuildSpec: buildspec.yml
         Location: https://github.com/aws-samples/cross-platform-go-builds-with-aws-codebuild
         Type: GITHUB
       Environment:
-        ComputeType: BUILD_GENERAL1_LARGE
+        ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/standard:5.0
         PrivilegedMode: false
         Type: LINUX_CONTAINER
