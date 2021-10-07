@@ -1,5 +1,7 @@
 ## Target Cross-platform Go Builds with AWS CodeBuild Batch Builds
 
+This repository is used for a sample build in the blog post: [Target cross-platform Go builds with AWS CodeBuild Batch builds](https://aws.amazon.com/blogs/devops/target-cross-platform-go-builds-with-aws-codebuild-batch-builds/)
+
 This project shows how to create a single AWS CodeBuild project using a batch build and a single build spec to create concurrent builds for the 6 targeted platforms. You can learn more about batch builds in AWS CodeBuild in the documentation: https://docs.aws.amazon.com/codebuild/latest/userguide/batch-build.html
 
 # Usage
